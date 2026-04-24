@@ -1,0 +1,62 @@
+{
+  "note": "Client identity and proprietary API schemas redacted. All accuracy numbers are real experimental results.",
+  "models": {
+    "baseline_7b": {
+      "name": "Qwen2.5-7B-Instruct (baseline, no fine-tuning)",
+      "bfcl_strict_pct": 92.8,
+      "bfcl_loose_pct": 92.8,
+      "throughput_tok_s": null,
+      "ttft_p99_ms": null,
+      "cost_per_million_tokens": null
+    },
+    "baseline_3b": {
+      "name": "Qwen2.5-3B-Instruct (baseline, no fine-tuning)",
+      "bfcl_strict_pct": 91.2,
+      "bfcl_loose_pct": 91.4,
+      "throughput_tok_s": 6075,
+      "ttft_p99_ms": 78.7,
+      "cost_per_million_tokens": 0.14
+    },
+    "finetuned_7b_lora_r32": {
+      "name": "Qwen2.5-7B-Instruct + LoRA r=32 on ToolACE (3 epochs)",
+      "bfcl_strict_pct": 42.5,
+      "bfcl_loose_pct": 50.5,
+      "toolace_val_pct": 96.9,
+      "throughput_tok_s": 4154,
+      "ttft_p99_ms": 87.0,
+      "cost_per_million_tokens": 0.23,
+      "fp8_size_gb": 8.2
+    },
+    "finetuned_7b_lora_filtered_1epoch": {
+      "name": "Qwen2.5-7B-Instruct + LoRA r=32, filtered ToolACE (1 epoch, LR 5e-5)",
+      "bfcl_strict_pct": 64.8,
+      "bfcl_loose_pct": 89.2,
+      "examples_removed": 537,
+      "total_examples": 10336,
+      "filter_pct": 5.2,
+      "dominant_remaining_failure": "module_prefix_naming"
+    },
+    "baseline_3b_fp8": {
+      "name": "Qwen2.5-3B-Instruct (baseline, FP8)",
+      "bfcl_strict_pct": 91.0,
+      "bfcl_loose_pct": 91.2,
+      "throughput_tok_s": 6780,
+      "ttft_p99_ms": 142.9,
+      "cost_per_million_tokens": 0.14,
+      "note": "TTFT spike vs FP16 unexplained — under investigation"
+    }
+  },
+  "checkpoints": [
+    {"step": 500,  "epoch_approx": 0.8, "bfcl_strict_pct": 41.2},
+    {"step": 1000, "epoch_approx": 1.6, "bfcl_strict_pct": 42.1},
+    {"step": 1500, "epoch_approx": 2.4, "bfcl_strict_pct": 43.0}
+  ],
+  "regression_decomposition": {
+    "total_regression_pp": 50.3,
+    "prefix_artifact_pp": 8.0,
+    "genuine_regression_pp": 42.3,
+    "genuine_share_pct": 84.1,
+    "artifact_share_pct": 15.9
+  },
+  "production_recommendation": "Qwen2.5-3B-Instruct baseline (FP16). Pareto-optimal on accuracy, throughput, latency, and cost."
+}

@@ -1,0 +1,107 @@
+[
+  {
+    "model": "Qwen2.5-7B-Instruct-LoRA-FP8",
+    "config": {
+      "model_name": "Qwen2.5-7B-Instruct-LoRA-FP8",
+      "model_size_gb": 8.2,
+      "vram_total_gb": 80.0,
+      "mem_fraction_static": 0.9,
+      "max_concurrency": 32,
+      "max_tokens": 256,
+      "max_context_len": 8192,
+      "quantization": "FP8",
+      "serving_framework": "SGLang",
+      "ttft_p99_ms": 87.0,
+      "throughput_tok_s": 4154
+    },
+    "vram": {
+      "available_after_weights_gb": 71.8,
+      "kv_cache_allocated_gb": 64.6,
+      "headroom_gb": 7.2,
+      "peak_kv_demand_estimate_gb": 0.13,
+      "oom_risk": "LOW",
+      "recommended_mem_fraction": 0.85
+    },
+    "latency": {
+      "benchmark_ttft_p99_ms": 87.0,
+      "production_estimate_low_ms": 130,
+      "production_estimate_high_ms": 218,
+      "optimism_flags": [
+        "Fixed max_tokens \u2014 low output variance understates TPOT p99",
+        "Homogeneous prompts \u2014 RadixAttention reuse rate will be lower in production",
+        "Warm-cache measurement only \u2014 cold start TTFT uncharacterised"
+      ],
+      "recommendation": "Present 130\u2013218ms as production estimate; cite 87.0ms as benchmark floor."
+    }
+  },
+  {
+    "model": "Qwen2.5-3B-Instruct-Baseline-FP16",
+    "config": {
+      "model_name": "Qwen2.5-3B-Instruct-Baseline-FP16",
+      "model_size_gb": 6.5,
+      "vram_total_gb": 80.0,
+      "mem_fraction_static": 0.9,
+      "max_concurrency": 32,
+      "max_tokens": 256,
+      "max_context_len": 8192,
+      "quantization": "FP16",
+      "serving_framework": "SGLang",
+      "ttft_p99_ms": 78.7,
+      "throughput_tok_s": 6075
+    },
+    "vram": {
+      "available_after_weights_gb": 73.5,
+      "kv_cache_allocated_gb": 66.2,
+      "headroom_gb": 7.3,
+      "peak_kv_demand_estimate_gb": 0.13,
+      "oom_risk": "LOW",
+      "recommended_mem_fraction": 0.85
+    },
+    "latency": {
+      "benchmark_ttft_p99_ms": 78.7,
+      "production_estimate_low_ms": 118,
+      "production_estimate_high_ms": 197,
+      "optimism_flags": [
+        "Fixed max_tokens \u2014 low output variance understates TPOT p99",
+        "Homogeneous prompts \u2014 RadixAttention reuse rate will be lower in production",
+        "Warm-cache measurement only \u2014 cold start TTFT uncharacterised"
+      ],
+      "recommendation": "Present 118\u2013197ms as production estimate; cite 78.7ms as benchmark floor."
+    }
+  },
+  {
+    "model": "Qwen2.5-3B-Instruct-Baseline-FP8",
+    "config": {
+      "model_name": "Qwen2.5-3B-Instruct-Baseline-FP8",
+      "model_size_gb": 3.4,
+      "vram_total_gb": 80.0,
+      "mem_fraction_static": 0.9,
+      "max_concurrency": 32,
+      "max_tokens": 256,
+      "max_context_len": 8192,
+      "quantization": "FP8",
+      "serving_framework": "SGLang",
+      "ttft_p99_ms": 142.9,
+      "throughput_tok_s": 6780
+    },
+    "vram": {
+      "available_after_weights_gb": 76.6,
+      "kv_cache_allocated_gb": 68.9,
+      "headroom_gb": 7.7,
+      "peak_kv_demand_estimate_gb": 0.08,
+      "oom_risk": "LOW",
+      "recommended_mem_fraction": 0.85
+    },
+    "latency": {
+      "benchmark_ttft_p99_ms": 142.9,
+      "production_estimate_low_ms": 214,
+      "production_estimate_high_ms": 357,
+      "optimism_flags": [
+        "Fixed max_tokens \u2014 low output variance understates TPOT p99",
+        "Homogeneous prompts \u2014 RadixAttention reuse rate will be lower in production",
+        "Warm-cache measurement only \u2014 cold start TTFT uncharacterised"
+      ],
+      "recommendation": "Present 214\u2013357ms as production estimate; cite 142.9ms as benchmark floor."
+    }
+  }
+]

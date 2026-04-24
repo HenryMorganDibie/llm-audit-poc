@@ -1,0 +1,58 @@
+{
+  "regression_decomposition": {
+    "baseline_strict_pct": 92.8,
+    "finetuned_strict_pct": 42.5,
+    "finetuned_loose_pct": 50.5,
+    "total_regression_pp": 50.3,
+    "prefix_artifact_pp": 8.0,
+    "genuine_regression_pp": 42.3,
+    "artifact_share_pct": 15.9,
+    "genuine_share_pct": 84.1
+  },
+  "checkpoint_trajectory": "data_distribution",
+  "filtered_retrain": {
+    "original_strict_pct": 42.5,
+    "filtered_strict_pct": 64.8,
+    "filtered_loose_pct": 89.2,
+    "baseline_strict_pct": 92.8,
+    "recovery_pp": 22.3,
+    "gap_to_baseline_pp": 28.0,
+    "examples_removed": 537,
+    "filter_pct": 5.2,
+    "dominant_failure_mode": "mixed"
+  },
+  "inference_assessment": {
+    "model_size_gb": 8.2,
+    "kv_cache_allocated_gb": 64.6,
+    "headroom_gb": 7.2,
+    "peak_kv_demand_estimate_gb": 0.13,
+    "oom_risk": "LOW",
+    "mem_fraction_recommendation": 0.85,
+    "ttft_benchmark_p99_ms": 87.0,
+    "ttft_production_low_ms": 130.0,
+    "ttft_production_high_ms": 218.0,
+    "throughput_tok_s": 4154
+  },
+  "failure_mode_taxonomy": {
+    "module_prefix_drop": {
+      "description": "Right function name, wrong namespace prefix (e.g. 'area_triangle' vs 'geometry.area_triangle')",
+      "nature": "Partially artifact \u2014 strict scorer penalises; base model does not exhibit this",
+      "estimated_share_pp": 8
+    },
+    "parameter_extraction_failure": {
+      "description": "Correct function name, incomplete or malformed arguments",
+      "nature": "Genuine behavioral regression \u2014 model learned over-cautious ToolACE distribution",
+      "estimated_share_pp": 20
+    },
+    "outright_refusal": {
+      "description": "Model declines to call or requests clarification instead of executing",
+      "nature": "Genuine behavioral regression \u2014 ToolACE refusal examples contaminated training",
+      "estimated_share_pp": 15
+    },
+    "scorer_format_mismatch": {
+      "description": "Model outputs correct call in <tool_call> XML; scorer partially misses due to format priority order",
+      "nature": "Scorer artifact \u2014 evaluate_custom.py parsing order issue (corrected in v2)",
+      "estimated_share_pp": 7
+    }
+  }
+}
