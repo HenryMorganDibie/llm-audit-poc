@@ -160,6 +160,6 @@ python scripts/visualise_results.py
 ## About
 
 Prepared by **Henry Dibie** — ML Systems Engineer & Data Scientist  
-[GitHub](https://github.com/HenryMorganDibie) · [LinkedIn](https://linkedin.com/in/kinghenrymorgan) · [Medium](https://medium.com/@KingHenryMorgan)
+[GitHub](https://github.com/HenryMorganDibie) · [LinkedIn](https://linkedin.com/in/kinghenrymorgan) · [Medium](https://medium.com/@KingHenryMorgansDiary)
 
 *Client identity and proprietary API schemas redacted. All accuracy numbers are real experimental results from the engagement.*
