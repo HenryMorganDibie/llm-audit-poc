@@ -5,6 +5,8 @@ Generates charts from the redacted audit results.
 Run: python scripts/visualise_results.py
 Output: results/figures/
 """
+import matplotlib
+matplotlib.use('Agg')
 
 import json
 import numpy as np
