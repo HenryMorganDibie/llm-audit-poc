@@ -106,8 +106,8 @@ With `mem_fraction_static=0.90` on an 80GB H100 serving the FP8 7B (8.2GB weight
 
 | Component | Estimate |
 |---|---|
-| KV cache allocated | ~57.6 GB |
-| CUDA overhead / headroom | ~6–8 GB |
+| KV cache allocated | ~64.6 GB |
+| CUDA overhead / headroom | ~7.2 GB |
 | OOM risk at concurrency 32 | **LOW** (cache exhaustion risk is MEDIUM under burst) |
 
 **Recommendation:** Set `mem_fraction_static=0.85` for production. Trades ~7% throughput for meaningful fragmentation headroom. Add KV cache utilisation monitoring before go-live.
