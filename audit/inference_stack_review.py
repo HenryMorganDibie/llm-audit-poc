@@ -4,7 +4,9 @@ audit/inference_stack_review.py
 Evaluates VRAM headroom, KV cache risk, and latency measurement validity
 for a served LLM under concurrent load on a single H100.
 
-Redacted version: client identity removed. Numbers are real.
+Redacted version: client identity removed. Benchmark numbers are real.
+KV cache demand is computed from the model architecture (layers, KV heads, head dim),
+assuming a 16-bit KV cache. Production TTFT is a heuristic range, not a measurement.
 """
 
 import json
@@ -25,13 +27,25 @@ class InferenceConfig:
     serving_framework: str
     ttft_p99_ms: float
     throughput_tok_s: float
+    # Architecture values from the published Qwen2.5 config.json files.
+    # KV bytes/token = 2 (K and V) x layers x KV heads x head_dim x bytes per element.
+    num_layers: int = 0
+    num_kv_heads: int = 0
+    head_dim: int = 0
+    # 2 bytes assumes a 16-bit KV cache (conservative). Set to 1 if the server
+    # was launched with an FP8 KV cache.
+    kv_dtype_bytes: int = 2
+
+
+def kv_bytes_per_token(cfg: "InferenceConfig") -> int:
+    return 2 * cfg.num_layers * cfg.num_kv_heads * cfg.head_dim * cfg.kv_dtype_bytes
 
 
 def vram_budget(cfg: InferenceConfig) -> dict:
     available = cfg.vram_total_gb - cfg.model_size_gb
     kv_alloc  = available * cfg.mem_fraction_static
     headroom  = available * (1 - cfg.mem_fraction_static)
-    bytes_per_token = 512 if cfg.model_size_gb > 5 else 300
+    bytes_per_token = kv_bytes_per_token(cfg)
     peak_kv   = (cfg.max_concurrency * cfg.max_context_len * bytes_per_token) / 1e9
 
     if peak_kv > kv_alloc * 0.85:
@@ -46,6 +60,7 @@ def vram_budget(cfg: InferenceConfig) -> dict:
         "kv_cache_allocated_gb":      round(kv_alloc, 1),
         "headroom_gb":                round(headroom, 1),
         "peak_kv_demand_estimate_gb": round(peak_kv, 2),
+        "kv_bytes_per_token":         bytes_per_token,
         "oom_risk":                   risk,
         "recommended_mem_fraction":   0.85 if cfg.mem_fraction_static > 0.87 else cfg.mem_fraction_static,
     }
@@ -68,8 +83,9 @@ def latency_validity(cfg: InferenceConfig) -> dict:
         "benchmark_ttft_p99_ms":      cfg.ttft_p99_ms,
         "production_estimate_low_ms": production_low,
         "production_estimate_high_ms":production_high,
+        "estimate_method":            "Heuristic multiplier (1.5x to 2.5x) applied to the benchmark p99. Not a measurement.",
         "optimism_flags":             flags,
-        "recommendation":             f"Present {production_low}–{production_high}ms as production estimate; cite {cfg.ttft_p99_ms}ms as benchmark floor.",
+        "recommendation":             f"Present {production_low}–{production_high}ms as a heuristic production estimate (not measured); cite {cfg.ttft_p99_ms}ms as the benchmark floor. Measure with real traffic and cold starts before committing to an SLO.",
     }
 
 
@@ -114,6 +130,7 @@ if __name__ == "__main__":
             serving_framework="SGLang",
             ttft_p99_ms=87.0,
             throughput_tok_s=4154,
+            num_layers=28, num_kv_heads=4, head_dim=128,
         ),
         InferenceConfig(
             model_name="Qwen2.5-3B-Instruct-Baseline-FP16",
@@ -127,6 +144,7 @@ if __name__ == "__main__":
             serving_framework="SGLang",
             ttft_p99_ms=78.7,
             throughput_tok_s=6075,
+            num_layers=36, num_kv_heads=2, head_dim=128,
         ),
         InferenceConfig(
             model_name="Qwen2.5-3B-Instruct-Baseline-FP8",
@@ -140,6 +158,7 @@ if __name__ == "__main__":
             serving_framework="SGLang",
             ttft_p99_ms=142.9,
             throughput_tok_s=6780,
+            num_layers=36, num_kv_heads=2, head_dim=128,
         ),
     ]
     run_review(configs)

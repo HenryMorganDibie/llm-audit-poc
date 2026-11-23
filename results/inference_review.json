@@ -12,13 +12,18 @@
       "quantization": "FP8",
       "serving_framework": "SGLang",
       "ttft_p99_ms": 87.0,
-      "throughput_tok_s": 4154
+      "throughput_tok_s": 4154,
+      "num_layers": 28,
+      "num_kv_heads": 4,
+      "head_dim": 128,
+      "kv_dtype_bytes": 2
     },
     "vram": {
       "available_after_weights_gb": 71.8,
       "kv_cache_allocated_gb": 64.6,
       "headroom_gb": 7.2,
-      "peak_kv_demand_estimate_gb": 0.13,
+      "peak_kv_demand_estimate_gb": 15.03,
+      "kv_bytes_per_token": 57344,
       "oom_risk": "LOW",
       "recommended_mem_fraction": 0.85
     },
@@ -26,12 +31,13 @@
       "benchmark_ttft_p99_ms": 87.0,
       "production_estimate_low_ms": 130,
       "production_estimate_high_ms": 218,
+      "estimate_method": "Heuristic multiplier (1.5x to 2.5x) applied to the benchmark p99. Not a measurement.",
       "optimism_flags": [
         "Fixed max_tokens \u2014 low output variance understates TPOT p99",
         "Homogeneous prompts \u2014 RadixAttention reuse rate will be lower in production",
         "Warm-cache measurement only \u2014 cold start TTFT uncharacterised"
       ],
-      "recommendation": "Present 130\u2013218ms as production estimate; cite 87.0ms as benchmark floor."
+      "recommendation": "Present 130\u2013218ms as a heuristic production estimate (not measured); cite 87.0ms as the benchmark floor. Measure with real traffic and cold starts before committing to an SLO."
     }
   },
   {
@@ -47,13 +53,18 @@
       "quantization": "FP16",
       "serving_framework": "SGLang",
       "ttft_p99_ms": 78.7,
-      "throughput_tok_s": 6075
+      "throughput_tok_s": 6075,
+      "num_layers": 36,
+      "num_kv_heads": 2,
+      "head_dim": 128,
+      "kv_dtype_bytes": 2
     },
     "vram": {
       "available_after_weights_gb": 73.5,
       "kv_cache_allocated_gb": 66.2,
       "headroom_gb": 7.3,
-      "peak_kv_demand_estimate_gb": 0.13,
+      "peak_kv_demand_estimate_gb": 9.66,
+      "kv_bytes_per_token": 36864,
       "oom_risk": "LOW",
       "recommended_mem_fraction": 0.85
     },
@@ -61,12 +72,13 @@
       "benchmark_ttft_p99_ms": 78.7,
       "production_estimate_low_ms": 118,
       "production_estimate_high_ms": 197,
+      "estimate_method": "Heuristic multiplier (1.5x to 2.5x) applied to the benchmark p99. Not a measurement.",
       "optimism_flags": [
         "Fixed max_tokens \u2014 low output variance understates TPOT p99",
         "Homogeneous prompts \u2014 RadixAttention reuse rate will be lower in production",
         "Warm-cache measurement only \u2014 cold start TTFT uncharacterised"
       ],
-      "recommendation": "Present 118\u2013197ms as production estimate; cite 78.7ms as benchmark floor."
+      "recommendation": "Present 118\u2013197ms as a heuristic production estimate (not measured); cite 78.7ms as the benchmark floor. Measure with real traffic and cold starts before committing to an SLO."
     }
   },
   {
@@ -82,13 +94,18 @@
       "quantization": "FP8",
       "serving_framework": "SGLang",
       "ttft_p99_ms": 142.9,
-      "throughput_tok_s": 6780
+      "throughput_tok_s": 6780,
+      "num_layers": 36,
+      "num_kv_heads": 2,
+      "head_dim": 128,
+      "kv_dtype_bytes": 2
     },
     "vram": {
       "available_after_weights_gb": 76.6,
       "kv_cache_allocated_gb": 68.9,
       "headroom_gb": 7.7,
-      "peak_kv_demand_estimate_gb": 0.08,
+      "peak_kv_demand_estimate_gb": 9.66,
+      "kv_bytes_per_token": 36864,
       "oom_risk": "LOW",
       "recommended_mem_fraction": 0.85
     },
@@ -96,12 +113,13 @@
       "benchmark_ttft_p99_ms": 142.9,
       "production_estimate_low_ms": 214,
       "production_estimate_high_ms": 357,
+      "estimate_method": "Heuristic multiplier (1.5x to 2.5x) applied to the benchmark p99. Not a measurement.",
       "optimism_flags": [
         "Fixed max_tokens \u2014 low output variance understates TPOT p99",
         "Homogeneous prompts \u2014 RadixAttention reuse rate will be lower in production",
         "Warm-cache measurement only \u2014 cold start TTFT uncharacterised"
       ],
-      "recommendation": "Present 214\u2013357ms as production estimate; cite 142.9ms as benchmark floor."
+      "recommendation": "Present 214\u2013357ms as a heuristic production estimate (not measured); cite 142.9ms as the benchmark floor. Measure with real traffic and cold starts before committing to an SLO."
     }
   }
 ]

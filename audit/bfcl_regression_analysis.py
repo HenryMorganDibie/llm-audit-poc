@@ -2,20 +2,28 @@
 audit/bfcl_regression_analysis.py
 
 Reproduces the regression decomposition methodology from the audit report.
-Demonstrates how a ~50pp BFCL regression can be decomposed into:
-  - Genuine behavioral regression (~35pp)
-  - Scorer artifact from strict name matching (~15pp)
+Decomposes the 50.3pp strict-score BFCL regression into:
+  - Naming effect (strict vs loose scoring): 8.0pp. Measured. The fine-tune drops
+    module prefixes; the base models show a 0pp strict-vs-loose gap.
+  - Remainder: 42.3pp. This is an UPPER BOUND on the genuine behavioural regression.
+    The failure-mode taxonomy below estimates a further ~7pp scorer parsing issue,
+    so the genuine regression is best read as roughly 35 to 42pp.
+
+The taxonomy shares are estimates, not measurements.
 
 Usage:
-    python audit/bfcl_regression_analysis.py --results results/eval_results.json
+    python audit/bfcl_regression_analysis.py [--results results/eval_results_redacted.json]
 
 Redacted version: client identity and proprietary API schemas removed.
 """
 
 import json
+import sys
 import argparse
-import numpy as np
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from audit.inference_stack_review import InferenceConfig, vram_budget, latency_validity
 
 
 # ─── Failure mode taxonomy ────────────────────────────────────────────────────
@@ -24,7 +32,7 @@ FAILURE_MODES = {
     "module_prefix_drop": {
         "description": "Right function name, wrong namespace prefix (e.g. 'area_triangle' vs 'geometry.area_triangle')",
         "nature": "Partially artifact — strict scorer penalises; base model does not exhibit this",
-        "estimated_share_pp": 8,
+        "estimated_share_pp": 8,   # measured: loose minus strict on the fine-tuned model
     },
     "parameter_extraction_failure": {
         "description": "Correct function name, incomplete or malformed arguments",
@@ -62,6 +70,7 @@ def decompose_regression(strict_score: float, loose_score: float, baseline_stric
     prefix_artifact  = loose_score - strict_score          # name-match strictness artifact
     genuine_regression = total_regression - prefix_artifact
 
+    parser_share = FAILURE_MODES["scorer_format_mismatch"]["estimated_share_pp"]
     return {
         "baseline_strict_pct":       round(baseline_strict * 100, 1),
         "finetuned_strict_pct":       round(strict_score * 100, 1),
@@ -69,6 +78,7 @@ def decompose_regression(strict_score: float, loose_score: float, baseline_stric
         "total_regression_pp":        round(total_regression * 100, 1),
         "prefix_artifact_pp":         round(prefix_artifact * 100, 1),
         "genuine_regression_pp":      round(genuine_regression * 100, 1),
+        "genuine_regression_low_pp":  round(genuine_regression * 100 - parser_share, 1),
         "artifact_share_pct":         round((prefix_artifact / total_regression) * 100, 1) if total_regression > 0 else 0,
         "genuine_share_pct":          round((genuine_regression / total_regression) * 100, 1) if total_regression > 0 else 0,
     }
@@ -123,12 +133,14 @@ def evaluate_filtered_retrain(
     original_strict   : strict accuracy before filtering
     filtered_strict   : strict accuracy after filtering
     filtered_loose    : loose accuracy after filtering
-    baseline_strict   : baseline model strict accuracy
+    baseline_strict   : baseline model strict accuracy (loose and strict are equal for the baseline)
     examples_removed  : number of training examples removed
     total_examples    : total training examples before filtering
     """
     recovery_pp     = filtered_strict - original_strict
     gap_to_baseline = baseline_strict - filtered_strict
+    loose_gap       = baseline_strict - filtered_loose
+    naming_gap      = filtered_loose - filtered_strict
     filter_pct      = (examples_removed / total_examples) * 100
 
     return {
@@ -138,69 +150,32 @@ def evaluate_filtered_retrain(
         "baseline_strict_pct":   round(baseline_strict * 100, 1),
         "recovery_pp":           round(recovery_pp * 100, 1),
         "gap_to_baseline_pp":    round(gap_to_baseline * 100, 1),
+        "loose_gap_to_baseline_pp": round(loose_gap * 100, 1),
+        "naming_gap_pp":         round(naming_gap * 100, 1),
         "examples_removed":      examples_removed,
         "filter_pct":            round(filter_pct, 1),
-        "dominant_failure_mode": "module_prefix_naming" if gap_to_baseline * 100 <= 10 else "mixed",
+        # Under loose scoring the gap is small, so what remains is mostly module-prefix naming.
+        "dominant_failure_mode": "module_prefix_naming" if loose_gap * 100 <= 10 else "mixed",
     }
 
 
-def assess_inference_stack(
-    model_size_gb: float,
-    vram_total_gb: float,
-    mem_fraction_static: float,
-    max_concurrency: int,
-    max_tokens: int,
-    max_context_len: int,
-    ttft_p99_ms: float,
-    throughput_tok_s: float,
-) -> dict:
-    """
-    Assess VRAM headroom and OOM risk for a served LLM under concurrency.
-
-    Parameters
-    ----------
-    model_size_gb        : model weight size in GB (post-quantization)
-    vram_total_gb        : total GPU VRAM (e.g. 80 for H100)
-    mem_fraction_static  : SGLang/vLLM static KV cache allocation fraction
-    max_concurrency      : peak concurrent requests
-    max_tokens           : max output tokens per request
-    max_context_len      : max context window (tokens)
-    ttft_p99_ms          : measured TTFT p99 in milliseconds
-    throughput_tok_s     : measured throughput in tokens/second
-    """
-    available_after_weights = vram_total_gb - model_size_gb
-    kv_cache_allocated_gb   = available_after_weights * mem_fraction_static
-    cuda_overhead_gb        = available_after_weights * (1 - mem_fraction_static)
-    headroom_gb             = cuda_overhead_gb
-
-    # Heuristic: KV cache demand at peak concurrency
-    # Each token in KV cache ≈ 2 × num_layers × hidden_dim × dtype_bytes
-    # For a 7B model in FP8: ~0.5KB/token; for 3B: ~0.3KB/token
-    bytes_per_token         = 512 if model_size_gb > 5 else 300
-    peak_kv_demand_gb       = (max_concurrency * max_context_len * bytes_per_token) / 1e9
-
-    oom_risk = "LOW"
-    if peak_kv_demand_gb > kv_cache_allocated_gb * 0.85:
-        oom_risk = "HIGH"
-    elif peak_kv_demand_gb > kv_cache_allocated_gb * 0.65:
-        oom_risk = "MEDIUM"
-
-    # Production TTFT estimate: benchmark was measured under homogeneous load
-    # Real production adds 1.5-2.5x factor for prompt variance and cold starts
-    ttft_production_low_ms  = round(ttft_p99_ms * 1.5, 0)
-    ttft_production_high_ms = round(ttft_p99_ms * 2.5, 0)
-
+def assess_inference_stack(cfg: InferenceConfig) -> dict:
+    """Wrap the inference stack review so both scripts share one calculation."""
+    vram = vram_budget(cfg)
+    lat = latency_validity(cfg)
     return {
-        "model_size_gb":              model_size_gb,
-        "kv_cache_allocated_gb":      round(kv_cache_allocated_gb, 1),
-        "headroom_gb":                round(headroom_gb, 1),
-        "peak_kv_demand_estimate_gb": round(peak_kv_demand_gb, 2),
-        "oom_risk":                   oom_risk,
-        "mem_fraction_recommendation": 0.85 if mem_fraction_static > 0.87 else mem_fraction_static,
-        "ttft_benchmark_p99_ms":      ttft_p99_ms,
-        "ttft_production_low_ms":     ttft_production_low_ms,
-        "ttft_production_high_ms":    ttft_production_high_ms,
-        "throughput_tok_s":           throughput_tok_s,
+        "model_size_gb":               cfg.model_size_gb,
+        "kv_cache_allocated_gb":       vram["kv_cache_allocated_gb"],
+        "headroom_gb":                 vram["headroom_gb"],
+        "kv_bytes_per_token":          vram["kv_bytes_per_token"],
+        "peak_kv_demand_estimate_gb":  vram["peak_kv_demand_estimate_gb"],
+        "oom_risk":                    vram["oom_risk"],
+        "mem_fraction_recommendation": vram["recommended_mem_fraction"],
+        "ttft_benchmark_p99_ms":       cfg.ttft_p99_ms,
+        "ttft_production_low_ms":      lat["production_estimate_low_ms"],
+        "ttft_production_high_ms":     lat["production_estimate_high_ms"],
+        "ttft_production_method":      lat["estimate_method"],
+        "throughput_tok_s":            cfg.throughput_tok_s,
     }
 
 
@@ -291,46 +266,52 @@ def _plain_report(decomp, trajectory, retrain, inference):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LLM Fine-Tuning Audit — Regression Analysis")
-    parser.add_argument("--results", type=str, default=None, help="Path to eval_results.json (optional)")
+    parser = argparse.ArgumentParser(description="LLM Fine-Tuning Audit: Regression Analysis")
+    parser.add_argument("--results", type=str, default="results/eval_results_redacted.json",
+                        help="Path to the redacted evaluation results JSON")
     args = parser.parse_args()
 
-    # ── Redacted results from the FinSynapse audit engagement ──────────────────
-    # Client identity and proprietary API schemas removed.
-    # All accuracy numbers are real experimental results.
+    with open(args.results) as fh:
+        data = json.load(fh)
+    models = data["models"]
+
+    base = models["baseline_7b"]["bfcl_strict_pct"] / 100
+    ft = models["finetuned_7b_lora_r32"]
+    filt = models["finetuned_7b_lora_filtered_1epoch"]
 
     decomp = decompose_regression(
-        strict_score=0.425,
-        loose_score=0.505,
-        baseline_strict=0.928,
+        strict_score=ft["bfcl_strict_pct"] / 100,
+        loose_score=ft["bfcl_loose_pct"] / 100,
+        baseline_strict=base,
     )
 
-    checkpoints = [
-        {"step": 500,  "strict_pct": 41.2},
-        {"step": 1000, "strict_pct": 42.1},
-        {"step": 1500, "strict_pct": 43.0},
-    ]
-    trajectory = score_checkpoint_trajectory(checkpoints)
+    trajectory = score_checkpoint_trajectory(
+        [{"step": c["step"], "strict_pct": c["bfcl_strict_pct"]} for c in data["checkpoints"]]
+    )
 
     retrain = evaluate_filtered_retrain(
-        original_strict=0.425,
-        filtered_strict=0.648,
-        filtered_loose=0.892,
-        baseline_strict=0.928,
-        examples_removed=537,
-        total_examples=10336,
+        original_strict=ft["bfcl_strict_pct"] / 100,
+        filtered_strict=filt["bfcl_strict_pct"] / 100,
+        filtered_loose=filt["bfcl_loose_pct"] / 100,
+        baseline_strict=base,
+        examples_removed=filt["examples_removed"],
+        total_examples=filt["total_examples"],
     )
 
-    inference = assess_inference_stack(
-        model_size_gb=8.2,
+    inference = assess_inference_stack(InferenceConfig(
+        model_name="Qwen2.5-7B-Instruct-LoRA-FP8",
+        model_size_gb=ft["fp8_size_gb"],
         vram_total_gb=80.0,
         mem_fraction_static=0.90,
         max_concurrency=32,
         max_tokens=256,
         max_context_len=8192,
-        ttft_p99_ms=87.0,
-        throughput_tok_s=4154,
-    )
+        quantization="FP8",
+        serving_framework="SGLang",
+        ttft_p99_ms=ft["ttft_p99_ms"],
+        throughput_tok_s=ft["throughput_tok_s"],
+        num_layers=28, num_kv_heads=4, head_dim=128,
+    ))
 
     print_report(decomp, trajectory, retrain, inference)
 

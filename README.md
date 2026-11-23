@@ -34,15 +34,15 @@ results/
 
 ## Key Findings
 
-### 1 — The 50pp Regression Is ~84% Real
+### 1 — Most of the 50pp Regression Is Real
 
 | Component | Magnitude | Nature |
 |---|---|---|
-| Genuine behavioral regression | **42pp** | Model learned ToolACE's refusal-heavy distribution |
-| Scorer artifact (strict name matching) | **8pp** | Fine-tune adopted module prefixes; base model doesn't |
+| Naming effect (strict vs loose scoring) | **8pp** | Measured. Fine-tune drops module prefixes; base models show a 0pp gap |
+| Remainder | **42pp** | Upper bound on the genuine behavioural regression |
 | **Total** | **50pp** | |
 
-The strict-vs-loose gap on the fine-tuned model is 8pp. The baselines show a 0pp gap. The prefix-dropping is a real behavioral change from ToolACE training — not a scorer quirk. But it only affects naming conventions, not parameter extraction.
+The strict-vs-loose gap on the fine-tuned model is 8pp, and the baselines show 0pp. The prefix dropping is itself a habit the fine-tune introduced, so whether it counts as a scoring artefact or a regression depends on whether production APIs use namespaced names. The failure-mode taxonomy in the code also estimates a further ~7pp from a scorer parsing-order issue. Read the genuine regression as roughly **35 to 42pp**, with 42pp as the upper bound. The taxonomy shares are estimates, not measurements.
 
 ---
 
@@ -96,7 +96,7 @@ The benchmark measured 87ms p99 TTFT under steady-state, homogeneous load with a
 - **No cold start measurement** — first request after server restart or idle eviction is uncharacterised.
 - **Fixed max_tokens=256** — understates TPOT p99 for longer outputs.
 
-**Production estimate: 130–220ms p99 TTFT** under realistic prompt variance.
+**Production estimate: 130–218ms p99 TTFT.** This is a heuristic (a 1.5x to 2.5x multiplier on the benchmark p99), not a measurement. Measure with real traffic and cold starts before setting an SLO.
 
 ---
 
@@ -108,7 +108,10 @@ With `mem_fraction_static=0.90` on an 80GB H100 serving the FP8 7B (8.2GB weight
 |---|---|
 | KV cache allocated | ~64.6 GB |
 | CUDA overhead / headroom | ~7.2 GB |
+| Peak KV demand at concurrency 32, 8,192-token contexts | ~15 GB (57,344 bytes per token for a 16-bit KV cache) |
 | OOM risk at concurrency 32 | **LOW** (cache exhaustion risk is MEDIUM under burst) |
+
+KV demand is computed from the Qwen2.5-7B architecture (28 layers, 4 KV heads, head dim 128) and assumes a 16-bit KV cache. An earlier version of this audit used a rough bytes-per-token heuristic that understated demand; the corrected figure does not change the LOW verdict.
 
 **Recommendation:** Set `mem_fraction_static=0.85` for production. Trades ~7% throughput for meaningful fragmentation headroom. Add KV cache utilisation monitoring before go-live.
 
@@ -124,6 +127,15 @@ The right next step is to collect 2 weeks of production traffic, build a held-ou
 
 ---
 
+## Limitations
+
+- The filtered retrain changed the data filter, epoch count and learning rate together. There is no clean ablation.
+- Latency numbers come from steady, homogeneous load with a warm cache and a fixed output length.
+- The failure-mode taxonomy shares are estimates.
+- The VRAM model is a simple screening calculation, not a capacity plan.
+
+---
+
 ## Run It
 
 ```bash
@@ -134,7 +146,7 @@ The right next step is to collect 2 weeks of production traffic, build a held-ou
 pip install -r requirements.txt
 
 # 3. Run regression analysis
-python audit/bfcl_regression_analysis.py
+python audit/bfcl_regression_analysis.py   # reads results/eval_results_redacted.json by default; use --results to point elsewhere
 
 # 4. Run inference stack review
 python audit/inference_stack_review.py

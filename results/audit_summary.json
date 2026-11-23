@@ -6,6 +6,7 @@
     "total_regression_pp": 50.3,
     "prefix_artifact_pp": 8.0,
     "genuine_regression_pp": 42.3,
+    "genuine_regression_low_pp": 35.3,
     "artifact_share_pct": 15.9,
     "genuine_share_pct": 84.1
   },
@@ -17,20 +18,24 @@
     "baseline_strict_pct": 92.8,
     "recovery_pp": 22.3,
     "gap_to_baseline_pp": 28.0,
+    "loose_gap_to_baseline_pp": 3.6,
+    "naming_gap_pp": 24.4,
     "examples_removed": 537,
     "filter_pct": 5.2,
-    "dominant_failure_mode": "mixed"
+    "dominant_failure_mode": "module_prefix_naming"
   },
   "inference_assessment": {
     "model_size_gb": 8.2,
     "kv_cache_allocated_gb": 64.6,
     "headroom_gb": 7.2,
-    "peak_kv_demand_estimate_gb": 0.13,
+    "kv_bytes_per_token": 57344,
+    "peak_kv_demand_estimate_gb": 15.03,
     "oom_risk": "LOW",
     "mem_fraction_recommendation": 0.85,
     "ttft_benchmark_p99_ms": 87.0,
-    "ttft_production_low_ms": 130.0,
-    "ttft_production_high_ms": 218.0,
+    "ttft_production_low_ms": 130,
+    "ttft_production_high_ms": 218,
+    "ttft_production_method": "Heuristic multiplier (1.5x to 2.5x) applied to the benchmark p99. Not a measurement.",
     "throughput_tok_s": 4154
   },
   "failure_mode_taxonomy": {
