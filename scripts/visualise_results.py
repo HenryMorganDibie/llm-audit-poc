@@ -82,7 +82,7 @@ def plot_accuracy_comparison():
 # ── 2. Regression Decomposition ──────────────────────────────────────────────
 def plot_regression_decomposition():
     decomp = data["regression_decomposition"]
-    categories = ["Genuine\nRegression", "Prefix\nArtifact"]
+    categories = ["Remaining\n(upper bound on\ngenuine regression)", "Naming effect\n(strict vs loose)"]
     values     = [decomp["genuine_regression_pp"], decomp["prefix_artifact_pp"]]
     colors     = [RED, ORANGE]
 
@@ -110,9 +110,9 @@ def plot_regression_decomposition():
     ax2.pie(values, labels=categories, colors=colors, autopct="%1.1f%%",
             startangle=90, textprops={"fontsize": 11},
             wedgeprops={"edgecolor": "white", "linewidth": 2})
-    ax2.set_title("Regression Decomposition\n(genuine vs scorer artifact)", fontsize=11, fontweight="bold", color=BLUE)
+    ax2.set_title("Regression Decomposition\n(measured naming effect vs remainder)", fontsize=11, fontweight="bold", color=BLUE)
 
-    plt.suptitle("50pp BFCL Regression: What's Real vs What's the Scorer", fontsize=12,
+    plt.suptitle("50pp BFCL Regression: Naming Effect vs Remaining Regression", fontsize=12,
                  fontweight="bold", color="#333333", y=1.01)
     plt.tight_layout()
     plt.savefig(OUT / "regression_decomposition.png", dpi=150, bbox_inches="tight")
